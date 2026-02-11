@@ -1,65 +1,110 @@
-# Kotsovolos Catalog Pipeline
+# Retail Catalog Pipeline
 
-Production-style Python pipeline for:
-- extracting category tree from Kotsovolos navigation JSON
-- scraping product catalog pages by category
-- exporting analysis-ready datasets and non-technical summaries
+A Python data pipeline that extracts category hierarchies and product catalog data from an e-commerce API, then produces analysis-ready outputs and stakeholder-friendly summaries.
 
-## Why this project matters
-- Replaces manual category/product collection workflows.
-- Handles pagination, retries, and resilient parsing.
-- Produces stakeholder-friendly outputs (Excel + markdown summary).
+## Project Overview
+This project demonstrates an end-to-end data engineering workflow:
+- ingest hierarchical category data
+- crawl paginated product endpoints
+- normalize and enrich records
+- generate business-facing reports
+- support scheduled execution (CI, cron, Airflow, n8n)
 
-## Project structure
-```text
-kotsovolos-catalog-pipeline/
-├── src/kotsovolos_pipeline.py
-├── tests/test_pipeline.py
-├── docs/automation.md
-├── .github/workflows/
-│   ├── ci.yml
-│   └── scheduled-catalog.yml
-├── output/
-├── requirements.txt
-├── Makefile
-└── README.md
-```
+## Tech Stack
+- Python 3
+- Requests
+- Pandas
+- OpenPyXL
+- Pytest
+- GitHub Actions
 
-## Setup
+## Key Features
+- Menu/category extraction with recursive traversal
+- Product scraping by category and page
+- Retry strategy with exponential backoff
+- Deduplication for product-level records
+- Multi-sheet Excel export (`products`, `category_summary`, `brand_summary`)
+- Markdown summary generation for non-technical stakeholders
+- Configurable endpoint templates via CLI args or environment variables
+
+## Installation
 ```bash
-cd /Users/chatzigrigorioug.a/myproject/kotsovolos-catalog-pipeline
+git clone https://github.com/your-username/retailer-catalog-pipeline.git
+cd retailer-catalog-pipeline
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ## Usage
-### Full sample run (menu + limited products)
+### 1) Sample run (safe limits)
 ```bash
-python3 src/kotsovolos_pipeline.py \
+python3 src/retailer_catalog_pipeline.py \
   --mode all \
   --max-categories 2 \
   --max-pages-per-category 2 \
-  --products-file output/kotsovolos_products_sample.xlsx \
-  --summary-markdown output/kotsovolos_summary_sample.md
+  --products-file output/retailer_products_sample.xlsx \
+  --summary-markdown output/retailer_summary_sample.md
 ```
 
-### Menu only
+### 2) Menu only
 ```bash
-python3 src/kotsovolos_pipeline.py --mode menu --menu-file output/menu_structure.xlsx
+python3 src/retailer_catalog_pipeline.py \
+  --mode menu \
+  --menu-file output/menu_structure.xlsx
 ```
 
-### Products only (from existing menu)
+### 3) Products only
 ```bash
-python3 src/kotsovolos_pipeline.py \
+python3 src/retailer_catalog_pipeline.py \
   --mode products \
   --menu-file output/menu_structure.xlsx \
   --level 3 \
-  --products-file output/kotsovolos_products.xlsx \
-  --summary-markdown output/kotsovolos_summary.md
+  --products-file output/retailer_products.xlsx \
+  --summary-markdown output/retailer_summary.md
 ```
 
-## Makefile shortcuts
+## Endpoint Configuration
+The repository is anonymized. Provide your own endpoints using arguments or env vars:
+
+- `--menu-url` / `RETAILER_MENU_URL`
+- `--model-url-template` / `RETAILER_MODEL_URL_TEMPLATE`
+- `--catalog-url-template` / `RETAILER_CATALOG_URL_TEMPLATE`
+
+Required placeholders in templates:
+- model template: `{path}`
+- catalog template: `{category_key}`, `{page}`, `{page_size}`
+
+
+Optional starter files:
+- `.env.example`
+- `config/endpoints.sample.json`
+
+Example:
+```bash
+python3 src/retailer_catalog_pipeline.py \
+  --mode all \
+  --menu-url "https://your-domain/content/store/navigation.json" \
+  --model-url-template "https://your-domain/content/store/products/{path}.model.json" \
+  --catalog-url-template "https://your-domain/api/search/byCategory/{category_key}?pageNumber={page}&pageSize={page_size}"
+```
+
+## Sample Output
+`output/retailer_summary_sample.md` includes sections like:
+
+```md
+# Retail Catalog Summary
+- Categories processed: 2
+- Products captured: 30
+
+## Top Categories
+| Category | Products |
+|---|---:|
+| Smartphones | 15 |
+| Tablets | 15 |
+```
+
+## Developer Commands
 ```bash
 make setup
 make menu
@@ -70,26 +115,9 @@ make lint
 make check
 ```
 
-## Output
-`products` output includes:
-- product-level dataset (`products`)
-- category aggregation (`category_summary`)
-- manufacturer aggregation (`brand_summary`)
-
-Optional markdown summary:
-- `output/kotsovolos_summary*.md`
-
 ## Scheduling
-- GitHub Actions weekly snapshot: `.github/workflows/scheduled-catalog.yml`
-- See automation options in `docs/automation.md` (cron, Airflow, n8n)
+- GitHub Actions: `.github/workflows/scheduled-catalog.yml`
+- Additional orchestration patterns: `docs/automation.md`
 
-## Legal and Responsible Use
-- Respect target website/API terms of use and fair-use limits.
-- Keep request rates moderate (use `--delay-seconds`).
-- Do not use this pipeline for unauthorized data extraction.
-- Do not publish sensitive or internal-only datasets.
-
-## Testing
-```bash
-pytest -q
-```
+## Professional Disclaimer
+This repository is provided for educational and portfolio purposes. Brand-specific details have been anonymized. Use only with data sources and endpoints you are authorized to access, and always comply with applicable terms of service, privacy requirements, and legal constraints.

@@ -8,7 +8,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from kotsovolos_pipeline import (  # noqa: E402
+from retailer_catalog_pipeline import (  # noqa: E402
     build_menu_dataframe,
     extract_black_friday_flag,
     extract_prices,
@@ -58,7 +58,7 @@ def test_build_menu_dataframe_extracts_nested_categories() -> None:
 
 
 def test_parse_aem_parts() -> None:
-    parts = parse_aem_parts("/content/kotsovolos/b2c/gr/products/tv/oled/abc")
+    parts = parse_aem_parts("/content/example-retailer/catalog/products/tv/oled/abc")
     assert parts == ["tv", "oled", "abc"]
 
 

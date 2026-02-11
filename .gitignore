@@ -1,9 +1,48 @@
+# Python bytecode/cache
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Virtual environments
 .venv/
+venv/
+env/
+ENV/
+
+# Test/coverage artifacts
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
 
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Runtime outputs
 output/
-*.xlsx
+
+# Local configs and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.secret
 config/*.txt
+
+# Data files (keep only explicit examples)
+*.csv
+*.json
+!*.sample.csv
+!*.sample.json

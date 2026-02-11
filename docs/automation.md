@@ -7,7 +7,7 @@
 
 ## 2) Cron (local/server)
 ```bash
-0 9 * * 1 cd /path/to/kotsovolos-catalog-pipeline && .venv/bin/python3 src/kotsovolos_pipeline.py --mode all --products-file output/kotsovolos_products.xlsx --summary-markdown output/kotsovolos_summary.md
+0 9 * * 1 cd /path/to/retailer-catalog-pipeline && .venv/bin/python3 src/retailer_catalog_pipeline.py --mode all --products-file output/retailer_products.xlsx --summary-markdown output/retailer_summary.md
 ```
 
 ## 3) Airflow

@@ -1,0 +1,5 @@
+{
+  "menu_url": "https://your-domain/content/store/navigation.json",
+  "model_url_template": "https://your-domain/content/store/products/{path}.model.json",
+  "catalog_url_template": "https://your-domain/api/search/byCategory/{category_key}?pageNumber={page}&pageSize={page_size}"
+}

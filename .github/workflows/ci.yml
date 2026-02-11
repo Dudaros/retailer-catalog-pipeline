@@ -24,7 +24,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint (syntax)
-        run: python -m py_compile src/kotsovolos_pipeline.py tests/test_pipeline.py
+        run: python -m py_compile src/retailer_catalog_pipeline.py tests/test_pipeline.py
 
       - name: Run tests
         run: pytest -q

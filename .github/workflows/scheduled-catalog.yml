@@ -25,16 +25,16 @@ jobs:
       - name: Run pipeline (safe sample)
         run: |
           mkdir -p output
-          python src/kotsovolos_pipeline.py \
+          python src/retailer_catalog_pipeline.py \
             --mode all \
             --max-categories 2 \
             --max-pages-per-category 2 \
-            --products-file output/kotsovolos_products_sample.xlsx \
-            --summary-markdown output/kotsovolos_summary_sample.md \
+            --products-file output/retailer_products_sample.xlsx \
+            --summary-markdown output/retailer_summary_sample.md \
             --log-level INFO
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kotsovolos-catalog-snapshot
+          name: retailer-catalog-snapshot
           path: output/*

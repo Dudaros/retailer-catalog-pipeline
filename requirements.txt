@@ -1,5 +1,5 @@
 pandas
-openpyxl
-pytest
 requests
 urllib3
+openpyxl
+pytest

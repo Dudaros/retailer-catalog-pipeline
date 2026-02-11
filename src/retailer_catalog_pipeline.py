@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from time import sleep
@@ -10,12 +11,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-MENU_URL = "https://new-content.kotsovolos.gr/content/kotsovolos/b2c/gr/home.navMenu.json"
-MODEL_URL_TEMPLATE = "https://new-content.kotsovolos.gr/content/kotsovolos/b2c/gr/products/{path}.model.json"
-CATALOG_URL_TEMPLATE = (
-    "https://www.kotsovolos.gr/api/ext/search/store/10151/productview/byCategory/{category_key}"
-    "?searchType=1002&searchSource=E&pageNumber={page}&pageSize={page_size}"
-    "&responseFormat=json&catalogId=10551&p_mode=mixed&currency=EUR&langId=-24&orderBy=10"
+DEFAULT_MENU_URL = "https://api.example-retailer.com/content/store/navigation.json"
+DEFAULT_MODEL_URL_TEMPLATE = "https://api.example-retailer.com/content/store/products/{path}.model.json"
+DEFAULT_CATALOG_URL_TEMPLATE = (
+    "https://api.example-retailer.com/api/search/productview/byCategory/{category_key}"
+    "?pageNumber={page}&pageSize={page_size}"
 )
 
 
@@ -66,7 +66,7 @@ def find_products_root(nav_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for item in nav_data:
         if isinstance(item.get("childMenu"), list):
             return item["childMenu"]
-    raise ValueError("Could not find products root menu in nav response.")
+    raise ValueError("Could not find products root menu in navigation response.")
 
 
 def extract_categories_recursive(
@@ -134,8 +134,7 @@ def load_categories_from_menu(menu_file: Path, level: int, max_categories: int |
     categories = df[df["AEM_URL"].notna()].copy()
     categories["AEM_URL"] = categories["AEM_URL"].astype(str).str.strip()
     categories = categories[categories["AEM_URL"] != ""]
-    categories = categories.drop_duplicates(subset=["AEM_URL"])
-    categories = categories.reset_index(drop=True)
+    categories = categories.drop_duplicates(subset=["AEM_URL"]).reset_index(drop=True)
     if max_categories:
         categories = categories.head(max_categories)
     return categories
@@ -148,8 +147,13 @@ def parse_aem_parts(aem_url: str) -> list[str] | None:
     return parts[-3:]
 
 
-def fetch_category_metadata(session: requests.Session, aem_parts: list[str], timeout: int) -> dict[str, Any]:
-    model_url = MODEL_URL_TEMPLATE.format(path="/".join(aem_parts))
+def fetch_category_metadata(
+    session: requests.Session,
+    aem_parts: list[str],
+    timeout: int,
+    model_url_template: str,
+) -> dict[str, Any]:
+    model_url = model_url_template.format(path="/".join(aem_parts))
     payload = fetch_json(session, model_url, timeout=timeout)
     if not isinstance(payload, dict):
         return {"Category_ID_number": "N/A", "Category_Title": "N/A", "Category_URL": "N/A"}
@@ -160,8 +164,8 @@ def fetch_category_metadata(session: requests.Session, aem_parts: list[str], tim
     }
 
 
-def build_catalog_url(category_key: str, page: int, page_size: int) -> str:
-    return CATALOG_URL_TEMPLATE.format(category_key=category_key, page=page, page_size=page_size)
+def build_catalog_url(category_key: str, page: int, page_size: int, catalog_url_template: str) -> str:
+    return catalog_url_template.format(category_key=category_key, page=page, page_size=page_size)
 
 
 def extract_black_friday_flag(product: dict[str, Any]) -> bool:
@@ -247,7 +251,7 @@ def write_markdown_summary(
 ) -> None:
     summary_file.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# Kotsovolos Catalog Summary",
+        "# Retail Catalog Summary",
         "",
         f"- Generated at: {datetime.now().isoformat(timespec='seconds')}",
         f"- Categories processed: {total_categories}",
@@ -318,6 +322,8 @@ def scrape_products(
     max_products: int | None,
     save_interval: int,
     summary_markdown: Path | None,
+    model_url_template: str,
+    catalog_url_template: str,
 ) -> int:
     records: list[dict[str, Any]] = []
     failed_categories: list[str] = []
@@ -337,7 +343,12 @@ def scrape_products(
             logging.warning("Skipping category with invalid AEM_URL: %s", aem_url)
             continue
 
-        category_meta = fetch_category_metadata(session, aem_parts=aem_parts, timeout=timeout)
+        category_meta = fetch_category_metadata(
+            session,
+            aem_parts=aem_parts,
+            timeout=timeout,
+            model_url_template=model_url_template,
+        )
         category_info = {
             "Category_Source_UniqueID": unique_id,
             "Category_Source_Title": title,
@@ -355,7 +366,12 @@ def scrape_products(
             if max_products and len(records) >= max_products:
                 break
 
-            url = build_catalog_url(category_key=category_key, page=page, page_size=page_size)
+            url = build_catalog_url(
+                category_key=category_key,
+                page=page,
+                page_size=page_size,
+                catalog_url_template=catalog_url_template,
+            )
             payload = fetch_json(session, url=url, timeout=timeout)
             if not isinstance(payload, dict):
                 failed_categories.append(title)
@@ -407,19 +423,37 @@ def scrape_products(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Kotsovolos catalog pipeline: menu extraction + product scraping.")
+    parser = argparse.ArgumentParser(description="Retail catalog pipeline: menu extraction + product scraping.")
     parser.add_argument("--mode", choices=["menu", "products", "all"], default="all", help="Pipeline mode.")
     parser.add_argument("--menu-file", type=Path, default=Path("output/menu_structure.xlsx"), help="Menu workbook path.")
     parser.add_argument(
+        "--menu-url",
+        type=str,
+        default=os.getenv("RETAILER_MENU_URL", DEFAULT_MENU_URL),
+        help="Navigation endpoint URL.",
+    )
+    parser.add_argument(
+        "--model-url-template",
+        type=str,
+        default=os.getenv("RETAILER_MODEL_URL_TEMPLATE", DEFAULT_MODEL_URL_TEMPLATE),
+        help="Template for category metadata endpoint. Must include {path}.",
+    )
+    parser.add_argument(
+        "--catalog-url-template",
+        type=str,
+        default=os.getenv("RETAILER_CATALOG_URL_TEMPLATE", DEFAULT_CATALOG_URL_TEMPLATE),
+        help="Template for catalog endpoint. Must include {category_key}, {page}, {page_size}.",
+    )
+    parser.add_argument(
         "--products-file",
         type=Path,
-        default=Path("output/kotsovolos_products.xlsx"),
+        default=Path("output/retailer_products.xlsx"),
         help="Product output file (.xlsx/.csv).",
     )
     parser.add_argument(
         "--summary-markdown",
         type=str,
-        default="output/kotsovolos_summary.md",
+        default="output/retailer_summary.md",
         help="Summary markdown path. Use 'none' to disable.",
     )
     parser.add_argument("--level", type=int, default=3, help="Category level to scrape from menu workbook.")
@@ -442,7 +476,7 @@ def main() -> None:
     session = build_session(retries=args.retries, backoff_factor=args.backoff_factor)
 
     if args.mode in {"menu", "all"}:
-        nav_payload = fetch_json(session=session, url=MENU_URL, timeout=args.timeout)
+        nav_payload = fetch_json(session=session, url=args.menu_url, timeout=args.timeout)
         if not isinstance(nav_payload, list):
             raise SystemExit("Failed to fetch menu payload.")
         menu_df = build_menu_dataframe(nav_payload)
@@ -471,6 +505,8 @@ def main() -> None:
             max_products=args.max_products,
             save_interval=args.save_interval,
             summary_markdown=summary_md,
+            model_url_template=args.model_url_template,
+            catalog_url_template=args.catalog_url_template,
         )
         raise SystemExit(exit_code)
 

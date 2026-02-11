@@ -9,18 +9,18 @@ setup:
 	$(PIP) install -r requirements.txt
 
 menu:
-	$(PYTHON) src/kotsovolos_pipeline.py --mode menu --log-level INFO
+	$(PYTHON) src/retailer_catalog_pipeline.py --mode menu --log-level INFO
 
 products:
-	$(PYTHON) src/kotsovolos_pipeline.py --mode products --menu-file output/menu_structure.xlsx --products-file output/kotsovolos_products.xlsx --log-level INFO
+	$(PYTHON) src/retailer_catalog_pipeline.py --mode products --menu-file output/menu_structure.xlsx --products-file output/retailer_products.xlsx --summary-markdown output/retailer_summary.md --log-level INFO
 
 products-sample:
-	$(PYTHON) src/kotsovolos_pipeline.py --mode all --max-categories 2 --max-pages-per-category 2 --products-file output/kotsovolos_products_sample.xlsx --summary-markdown output/kotsovolos_summary_sample.md --log-level INFO
+	$(PYTHON) src/retailer_catalog_pipeline.py --mode all --max-categories 2 --max-pages-per-category 2 --products-file output/retailer_products_sample.xlsx --summary-markdown output/retailer_summary_sample.md --log-level INFO
 
 test:
 	$(PYTHON) -m pytest -q
 
 lint:
-	$(PYTHON) -m py_compile src/kotsovolos_pipeline.py tests/test_pipeline.py
+	$(PYTHON) -m py_compile src/retailer_catalog_pipeline.py tests/test_pipeline.py
 
 check: lint test
